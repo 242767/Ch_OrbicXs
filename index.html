@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OrbicXs</title>
+<meta name="description" content="OrbicXs — yopiq, ikki kishilik chat.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0c0b18">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OrbicXs">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#0c0b18;--void-soft:#131226;--surface:#17162c;--surface-2:#201d38;
+  --line:rgba(246,243,236,.11);--line-soft:rgba(246,243,236,.06);
+  --ink:#f6f3ec;--ink-dim:#b6b1d1;--ink-faint:#8b87ab;
+  --dawn:#ff9466;--gold:#ffd37a;--orbit:#9c8fff;--ok:#7fe0a3;--bad:#ff9b9b;
+  --font-display:"Fraunces",Georgia,serif;
+  --font-body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --app-h:100dvh;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+html,body{height:100%;background:var(--void);color:var(--ink)}
+body{font-family:var(--font-body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.screen{position:fixed;top:0;left:0;right:0;height:var(--app-h);display:flex;flex-direction:column}
+
+/* ---------- Kirish / ism ekranlari ---------- */
+.intro{align-items:center;overflow-y:auto;padding:calc(var(--sat) + 24px) 20px calc(var(--sab) + 24px);
+  background:
+    radial-gradient(ellipse 60% 45% at 80% 6%,rgba(255,148,102,.22),transparent 60%),
+    radial-gradient(ellipse 50% 40% at 6% 30%,rgba(156,143,255,.17),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 50% 100%,rgba(255,211,122,.10),transparent 60%),var(--void)}
+.card{width:100%;max-width:380px;margin:auto;display:flex;flex-direction:column;align-items:center;text-align:center}
+.orbit{position:relative;width:200px;height:200px;margin-bottom:8px;flex:none}
+.orbit i{position:absolute;inset:0;margin:auto;border-radius:50%;border:1px solid var(--line)}
+.orbit i:nth-child(1){width:100%;height:100%;border-style:dashed;animation:spin 50s linear infinite}
+.orbit i:nth-child(1)::after{content:"";position:absolute;top:-4px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:var(--dawn);box-shadow:0 0 12px var(--dawn)}
+.orbit i:nth-child(2){width:76%;height:76%;border-color:var(--line-soft);animation:spin 32s linear infinite reverse}
+.orbit img{position:absolute;inset:0;margin:auto;width:84px;height:84px;border-radius:22px;box-shadow:0 0 0 1px rgba(255,255,255,.08),0 28px 60px -18px rgba(255,148,102,.55)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.brand{font-family:var(--font-display);font-style:italic;font-weight:600;font-size:2.7rem;line-height:1.1;letter-spacing:-.01em}
+.brand span{color:transparent;background:linear-gradient(100deg,var(--dawn),var(--gold));-webkit-background-clip:text;background-clip:text}
+.title{font-family:var(--font-display);font-style:italic;font-weight:600;font-size:2rem;line-height:1.15}
+.tagline{color:var(--ink-dim);margin-top:6px}
+.form{width:100%;margin-top:26px;display:flex;flex-direction:column;gap:12px;text-align:left}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:.82rem;font-weight:600;color:var(--ink-dim);padding-left:6px}
+.input{width:100%;padding:14px 18px;border-radius:999px;border:1px solid var(--line);background:var(--void-soft);font-size:16px}
+.input::placeholder{color:var(--ink-faint)}
+.input:focus{outline:none;border-color:var(--dawn);box-shadow:0 0 0 3px rgba(255,148,102,.18)}
+.code{text-align:center;letter-spacing:.45em;text-indent:.45em;font-family:var(--mono);font-size:1.35rem}
+.pw{position:relative}
+.pw .input{padding-right:108px}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:7px 12px;border-radius:999px;font-size:.8rem;font-weight:600;color:var(--ink-dim)}
+.pw-toggle:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 24px;border-radius:999px;font-weight:700;font-size:.97rem;transition:transform .2s,box-shadow .2s,opacity .2s}
+.btn-primary{background:linear-gradient(135deg,var(--dawn),var(--gold));color:var(--void);box-shadow:0 12px 30px -10px rgba(255,148,102,.55)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.55;cursor:default;transform:none}
+.link{color:var(--ink-dim);font-size:.9rem;text-decoration:underline;align-self:center;padding:6px}
+.hint{color:var(--ink-dim);font-size:.92rem;text-align:center}
+.note{min-height:1.5em;margin-top:14px;font-size:.92rem;color:var(--ink-dim)}
+.note.err{color:var(--bad)}.note.ok{color:var(--ok)}
+.fine{margin-top:18px;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.avatar-pick{position:relative;width:112px;height:112px;border-radius:50%;margin:0 auto 4px;display:grid;place-items:center;overflow:hidden;background:var(--surface-2);border:1px dashed rgba(246,243,236,.28);font-size:2rem;color:var(--ink-dim)}
+.avatar-pick img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* ---------- Avatar ---------- */
+.av{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;font-weight:700;color:var(--void);background:linear-gradient(135deg,var(--orbit),var(--dawn))}
+.av img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- Chat ---------- */
+#chatScreen{max-width:760px;margin:0 auto;background:var(--void);border-inline:1px solid var(--line-soft)}
+.chat-head{display:flex;align-items:center;gap:12px;padding:calc(var(--sat) + 10px) 14px 10px;background:rgba(19,18,38,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);flex:none}
+.who{flex:1;min-width:0}
+.who-name{font-weight:700;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who-status{font-size:.78rem;color:var(--ink-faint);min-height:1.2em}
+.who-status.on{color:var(--ok)}.who-status.on::before{content:"●";font-size:.6rem;margin-right:.4em}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--ink-dim);flex:none;transition:color .2s,border-color .2s}
+.icon-btn:hover{color:var(--ink);border-color:var(--ink-dim)}
+.icon-btn svg{width:18px;height:18px}
+.icon-btn.attn{color:var(--gold);border-color:rgba(255,211,122,.55)}
+.icon-btn:disabled{opacity:.45;cursor:default}
+.log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 14px 8px;display:flex;flex-direction:column}
+.day{align-self:center;margin:16px 0 8px;padding:3px 12px;border:1px solid var(--line-soft);border-radius:999px;background:var(--void-soft);font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+.row{display:flex;flex-direction:column;max-width:82%;margin-top:8px}
+.row.tight{margin-top:3px}
+.row.me{align-self:flex-end;align-items:flex-end}
+.row.them{align-self:flex-start;align-items:flex-start}
+.bubble{padding:9px 14px;border-radius:18px;font-size:.98rem;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
+.me .bubble{background:linear-gradient(135deg,var(--dawn),var(--gold));color:var(--void);border-bottom-right-radius:5px}
+.them .bubble{background:var(--surface-2);border-bottom-left-radius:5px}
+.bubble.img{padding:4px;line-height:0}
+.bubble.img img{display:block;max-width:min(260px,64vw);max-height:340px;border-radius:14px;cursor:zoom-in;background:var(--surface)}
+.bubble.img img:not(.loaded){width:160px;height:120px;object-fit:cover}
+.time{margin:3px 5px 0;font-family:var(--mono);font-size:.64rem;color:var(--ink-faint)}
+.pill-wrap{position:relative;height:0;flex:none}
+.newpill{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);padding:7px 14px;border-radius:999px;background:var(--surface-2);border:1px solid rgba(255,148,102,.5);font-size:.82rem;font-weight:600;box-shadow:0 10px 30px -10px rgba(0,0,0,.7);z-index:5}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:10px 12px calc(var(--sab) + 10px);background:rgba(19,18,38,.92);border-top:1px solid var(--line);flex:none}
+.composer textarea{flex:1;resize:none;min-height:44px;max-height:132px;padding:11px 16px;border-radius:22px;border:1px solid var(--line);background:var(--void-soft);font-size:16px;line-height:1.35;overflow-y:auto}
+.composer textarea::placeholder{color:var(--ink-faint)}
+.composer textarea:focus{outline:none;border-color:var(--dawn)}
+.composer .icon-btn{width:44px;height:44px}
+.send{width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,var(--dawn),var(--gold));color:var(--void);box-shadow:0 10px 24px -10px rgba(255,148,102,.7)}
+.send svg{width:20px;height:20px}.send:disabled{opacity:.5;cursor:default}
+
+/* ---------- Qoplamalar ---------- */
+.lightbox{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px);background:rgba(6,5,14,.95)}
+.lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px}
+.lightbox .icon-btn{position:absolute;top:calc(var(--sat) + 12px);right:12px;background:var(--surface)}
+.sheet{position:fixed;inset:0;z-index:55;display:grid;align-items:end;padding:16px 16px calc(var(--sab) + 16px);background:rgba(6,5,14,.72)}
+.sheet-card{width:100%;max-width:420px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding:22px;border-radius:24px;background:var(--surface);border:1px solid var(--line)}
+.sheet-card h2{font-family:var(--font-display);font-style:italic;font-weight:600;font-size:1.4rem}
+.sheet-card p{color:var(--ink-dim);font-size:.96rem}
+.toast{position:fixed;left:50%;bottom:calc(var(--sab) + 90px);transform:translate(-50%,12px);max-width:min(92vw,420px);padding:10px 16px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);font-size:.9rem;text-align:center;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<!-- Yuklanmoqda -->
+<div id="splash" class="screen intro" aria-label="Yuklanmoqda">
+  <div class="card"><div class="orbit" aria-hidden="true"><i></i><i></i><img src="icon-192.png" alt=""></div></div>
+</div>
+
+<!-- Kirish -->
+<div id="authScreen" class="screen intro" hidden>
+  <main class="card">
+    <div class="orbit" aria-hidden="true"><i></i><i></i><img src="icon-192.png" alt=""></div>
+    <h1 class="brand">Orbic<span>Xs</span></h1>
+    <p class="tagline">Kichik tafsilotlar. Katta farq.</p>
+
+    <form id="loginForm" class="form" novalidate>
+      <div class="field">
+        <label for="login">Login</label>
+        <input id="login" class="input" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="80" placeholder="Login" required>
+      </div>
+      <div class="field">
+        <label for="password">Parol</label>
+        <div class="pw">
+          <input id="password" class="input" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" placeholder="Parol" required>
+          <button id="pwToggle" class="pw-toggle" type="button" aria-pressed="false" aria-label="Parolni ko‘rsatish yoki yashirish">Ko‘rsatish</button>
+        </div>
+      </div>
+      <button id="loginBtn" class="btn btn-primary" type="submit">Kirish</button>
+    </form>
+
+    <p id="authNote" class="note" role="status"></p>
+    <p class="fine">Faqat taklif qilinganlar uchun</p>
+  </main>
+</div>
+
+<!-- Ism va rasm -->
+<div id="setupScreen" class="screen intro" hidden>
+  <main class="card">
+    <h1 class="title">Tanishaylik</h1>
+    <p class="tagline">Suhbatdoshingiz sizni shu ism bilan ko‘radi.</p>
+    <form id="setupForm" class="form" novalidate>
+      <button id="avatarBtn" class="avatar-pick" type="button" aria-label="Rasm tanlash (ixtiyoriy)">
+        <span id="avatarPlus" aria-hidden="true">+</span>
+        <img id="avatarPreview" alt="" hidden>
+      </button>
+      <input id="avatarInput" type="file" accept="image/*" hidden>
+      <div class="field">
+        <label for="nameInput">Ismingiz</label>
+        <input id="nameInput" class="input" type="text" maxlength="40" autocomplete="given-name" placeholder="Ismingiz" required>
+      </div>
+      <button id="saveProfile" class="btn btn-primary" type="submit">Davom etish</button>
+    </form>
+    <p id="setupNote" class="note" role="status"></p>
+  </main>
+</div>
+
+<!-- Chat -->
+<div id="chatScreen" class="screen" hidden>
+  <header class="chat-head">
+    <div id="partnerAv" class="av" aria-hidden="true"></div>
+    <div class="who">
+      <div id="partnerName" class="who-name">OrbicXs</div>
+      <div id="partnerStatus" class="who-status"></div>
+    </div>
+    <button id="bellBtn" class="icon-btn attn" type="button" aria-label="Bildirishnomalarni yoqish" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9Z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+    </button>
+    <button id="outBtn" class="icon-btn" type="button" aria-label="Chiqish">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4"/><path d="M20 12H9"/></svg>
+    </button>
+  </header>
+
+  <div id="log" class="log" role="log" aria-live="polite" aria-label="Xabarlar"></div>
+  <div class="pill-wrap"><button id="newPill" class="newpill" type="button" hidden>Yangi xabar ↓</button></div>
+
+  <form id="composer" class="composer" autocomplete="off">
+    <button id="attachBtn" class="icon-btn" type="button" aria-label="Rasm yuborish">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>
+    </button>
+    <input id="fileInput" type="file" accept="image/*" hidden>
+    <label class="sr" for="msgInput">Xabar</label>
+    <textarea id="msgInput" rows="1" maxlength="4000" placeholder="Xabar yozing…"></textarea>
+    <button id="sendBtn" class="send" type="submit" aria-label="Yuborish">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20s-7-4.35-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.65-9.5 9-9.5 9Z"/></svg>
+    </button>
+  </form>
+</div>
+
+<div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Rasm">
+  <button id="lbClose" class="icon-btn" type="button" aria-label="Yopish">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+  <img id="lbImg" alt="Yuborilgan rasm">
+</div>
+
+<div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-card">
+    <h2 id="sheetTitle"></h2>
+    <p id="sheetText"></p>
+    <button id="sheetOk" class="btn btn-primary" type="button">Tushunarli</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+'use strict';
+
+/* ======== SOZLAMALAR (faqat shu yerni o'zgartirasiz) ======== */
+const SUPABASE_URL = 'https://osicrbckwwgoybnlhmrh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Lwye-zXZXnjs_rk3UtPj_g_nSXSLWEL';   // ochiq (publishable) kalit, maxfiy emas. Supabase → Settings → API Keys
+const VAPID_PUBLIC_KEY = 'BPGJd_KdMfPeWWPbJzbDMb_FPiVIHapCSBR6Q35J3vEgVrGGMrFnZGOhwL0_s4qkrDX7bDYsMRTNo-lGLd858NY';       // push uchun OCHIQ kalit (maxfiysi faqat Supabase'da)
+const BUCKET = 'ox-media';
+// Login (masalan "ali.k7") ichkarida shu domen bilan email shakliga aylanadi: ali.k7@orbicxs.internal.
+// Bu manzilga hech qachon xat yuborilmaydi. Supabase'da akkauntlarni aynan shu shakldagi email bilan yarating.
+const LOGIN_DOMAIN = 'orbicxs.internal';
+/* ============================================================ */
+
+const $ = (id) => document.getElementById(id);
+const S = {
+  me: null, profile: null, partner: null, partnerOnline: false, entering: false,
+  ids: new Set(), lastId: 0, lastDay: '', prev: null, channel: null,
+  urls: new Map(), nearBottom: true, avatarFile: null,
+};
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const pushOK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/* ---------- Yordamchilar ---------- */
+const SCREENS = { splash: 'splash', auth: 'authScreen', setup: 'setupScreen', chat: 'chatScreen' };
+function show(name) { for (const k in SCREENS) $(SCREENS[k]).hidden = k !== name; }
+function note(id, text, kind) { const el = $(id); el.textContent = text || ''; el.className = 'note' + (kind ? ' ' + kind : ''); }
+let toastTimer;
+function toast(text, ms = 3400) {
+  const t = $('toast'); t.textContent = text; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+function hideToast() { clearTimeout(toastTimer); $('toast').classList.remove('show'); }
+function showSheet(title, text) { $('sheetTitle').textContent = title; $('sheetText').textContent = text; $('sheet').hidden = false; $('sheetOk').focus(); }
+function closeSheet() { $('sheet').hidden = true; }
+const busy = (id, on) => { $(id).disabled = on; };
+const fmtTime = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+function dayLabel(d) {
+  const t = new Date(), y = new Date(t); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Bugun';
+  if (d.toDateString() === y.toDateString()) return 'Kecha';
+  return pad2(d.getDate()) + '.' + pad2(d.getMonth() + 1) + '.' + d.getFullYear();
+}
+const initial = (name) => ((name || '?').trim().charAt(0) || '?').toUpperCase();
+
+// Klaviatura ochilganda ekran balandligini ko'rinadigan qismga moslaymiz
+function fitViewport() {
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+}
+fitViewport();
+window.addEventListener('resize', fitViewport);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => { fitViewport(); window.scrollTo(0, 0); if (S.nearBottom) scrollDown(); });
+}
+
+if (!window.supabase) {
+  show('auth');
+  note('authNote', 'Serverga ulanib bo‘lmadi. Internetni tekshirib, sahifani yangilang.', 'err');
+  return;
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: false } });   // havola bilan kirish yo'q
+
+/* ---------- Rasm: siqish va yopiq havolalar ---------- */
+function compress(file, max, quality) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+      c.toBlob((b) => (b ? resolve(b) : reject(new Error('Rasmni siqib bo‘lmadi'))), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Rasm ochilmadi')); };
+    img.src = url;
+  });
+}
+
+// Ombor yopiq: rasmlarga faqat 1 soatlik imzolangan havola beriladi
+async function signMany(paths) {
+  const now = Date.now();
+  const need = [...new Set(paths)].filter((p) => { const c = S.urls.get(p); return !c || c.exp < now + 60000; });
+  if (!need.length) return;
+  const { data, error } = await sb.storage.from(BUCKET).createSignedUrls(need, 3600);
+  if (error || !data) return;
+  for (const r of data) if (r.signedUrl) S.urls.set(r.path, { url: r.signedUrl, exp: now + 3600 * 1000 });
+}
+async function urlFor(path) { await signMany([path]); const c = S.urls.get(path); return c ? c.url : null; }
+
+function setAvatar(el, name, path) {
+  el.textContent = initial(name);
+  if (!path) return;
+  urlFor(path).then((u) => {
+    if (!u) return;
+    const img = new Image(); img.alt = '';
+    img.onload = () => { el.textContent = ''; el.appendChild(img); };
+    img.src = u;
+  });
+}
+
+/* ---------- Kirish (login va parol) ---------- */
+// "ali.k7" yozilsa ichkarida ali.k7@orbicxs.internal bo'ladi. To'liq email yozilsa, o'zi ishlatiladi.
+const LOGIN_RE = /^[a-z0-9][a-z0-9._-]{1,39}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function loginToEmail(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  if (v.includes('@')) return v.length <= 254 && EMAIL_RE.test(v) ? v : '';
+  return LOGIN_RE.test(v) ? v + '@' + LOGIN_DOMAIN : '';
+}
+function authError(err) {
+  const m = String((err && err.message) || err || '');
+  const code = err && err.code;
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(m)) return 'Login yoki parol noto‘g‘ri.';
+  if (code === 'email_not_confirmed' || /not confirmed/i.test(m)) return 'Akkaunt hali tasdiqlanmagan. Sayt egasiga ayting.';
+  if (/rate limit|security purposes|too many/i.test(m) || (err && err.status === 429)) return 'Juda ko‘p urinish bo‘ldi. Bir necha daqiqadan keyin qayta urinib ko‘ring.';
+  if (/failed to fetch|network|load failed/i.test(m)) return 'Serverga ulanib bo‘lmadi. Internetni tekshiring.';
+  return 'Kirib bo‘lmadi: ' + m;
+}
+
+$('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = loginToEmail($('login').value);
+  const password = $('password').value;
+  if (!email) return note('authNote', 'Loginni to‘g‘ri kiriting (harf, raqam, nuqta, tire).', 'err');
+  if (!password) return note('authNote', 'Parolni kiriting.', 'err');
+  busy('loginBtn', true); note('authNote', 'Tekshirilmoqda…');
+  let error = null;
+  try { ({ error } = await sb.auth.signInWithPassword({ email, password })); } catch (err) { error = err; }
+  busy('loginBtn', false);
+  if (error) return note('authNote', authError(error), 'err');
+  $('password').value = '';
+  note('authNote', '');            // davomini onAuthStateChange boshqaradi
+});
+
+function resetPasswordField() {
+  $('password').value = ''; $('password').type = 'password';
+  $('pwToggle').textContent = 'Ko‘rsatish'; $('pwToggle').setAttribute('aria-pressed', 'false');
+}
+$('pwToggle').addEventListener('click', () => {
+  const input = $('password'), reveal = input.type === 'password';
+  input.type = reveal ? 'text' : 'password';
+  $('pwToggle').textContent = reveal ? 'Yashirish' : 'Ko‘rsatish';
+  $('pwToggle').setAttribute('aria-pressed', String(reveal));
+  input.focus();
+});
+
+/* ---------- Seans va profil ---------- */
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') { teardown(); show('auth'); return; }
+  if (event === 'SIGNED_IN' && session) setTimeout(() => enter(session.user), 0);   // callback ichida kutmaymiz
+});
+
+async function enter(user) {
+  if (S.entering || (S.me && S.me.id === user.id)) return;
+  S.entering = true;
+  try {
+    const mem = await sb.from('ox_members').select('user_id').eq('user_id', user.id).maybeSingle();
+    if (mem.error) throw mem.error;
+    if (!mem.data) {
+      await sb.auth.signOut();
+      return note('authNote', 'Bu akkaunt chatga qo‘shilmagan.', 'err');
+    }
+    S.me = user;
+    const prof = await sb.from('ox_profiles').select('*').eq('id', user.id).maybeSingle();
+    if (prof.error) throw prof.error;
+    if (!prof.data) { show('setup'); $('nameInput').focus(); return; }
+    S.profile = prof.data;
+    await startChat();
+  } catch (err) {
+    console.error(err);
+    S.me = null;
+    show('auth');
+    note('authNote', 'Ulanib bo‘lmadi. Internetni tekshirib, sahifani yangilang.', 'err');
+  } finally { S.entering = false; }
+}
+
+function teardown() {
+  if (S.channel) { sb.removeChannel(S.channel); S.channel = null; }
+  Object.assign(S, { me: null, profile: null, partner: null, partnerOnline: false, lastId: 0, lastDay: '', prev: null, avatarFile: null });
+  S.ids.clear(); S.urls.clear();
+  $('log').textContent = ''; $('msgInput').value = ''; $('newPill').hidden = true;
+  resetPasswordField();
+}
+
+$('avatarBtn').addEventListener('click', () => $('avatarInput').click());
+$('avatarInput').addEventListener('change', (e) => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  S.avatarFile = f;
+  $('avatarPreview').src = URL.createObjectURL(f);
+  $('avatarPreview').hidden = false; $('avatarPlus').hidden = true;
+});
+
+$('setupForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('nameInput').value.trim();
+  if (!name) return note('setupNote', 'Ismingizni yozing.', 'err');
+  busy('saveProfile', true); note('setupNote', 'Saqlanmoqda…');
+  try {
+    let avatar_path = null;
+    if (S.avatarFile) {
+      const blob = await compress(S.avatarFile, 512, 0.85);
+      avatar_path = S.me.id + '/avatar.jpg';
+      const up = await sb.storage.from(BUCKET).upload(avatar_path, blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' });
+      if (up.error) throw up.error;
+    }
+    const { data, error } = await sb.from('ox_profiles').insert({ id: S.me.id, name, avatar_path }).select().single();
+    if (error) throw error;
+    S.profile = data; note('setupNote', '');
+    await startChat();
+  } catch (err) {
+    console.error(err);
+    note('setupNote', 'Saqlab bo‘lmadi: ' + ((err && err.message) || err), 'err');
+  } finally { busy('saveProfile', false); }
+});
+
+/* ---------- Chat ---------- */
+const logEl = $('log');
+const input = $('msgInput');
+const nearBottomNow = () => logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 140;
+function scrollDown() { logEl.scrollTop = logEl.scrollHeight; S.nearBottom = true; $('newPill').hidden = true; }
+logEl.addEventListener('scroll', () => { S.nearBottom = nearBottomNow(); if (S.nearBottom) $('newPill').hidden = true; }, { passive: true });
+$('newPill').addEventListener('click', scrollDown);
+
+async function startChat() {
+  show('chat');
+  await loadProfiles();
+  await loadMessages();
+  subscribe();
+  initPush();
+  clearNotifications();
+}
+
+async function loadProfiles() {
+  const { data, error } = await sb.from('ox_profiles').select('*');
+  if (error) throw error;
+  S.profile = data.find((p) => p.id === S.me.id) || S.profile;
+  S.partner = data.find((p) => p.id !== S.me.id) || null;
+  const p = S.partner;
+  $('partnerName').textContent = p ? p.name : 'Suhbatdosh kutilmoqda';
+  setAvatar($('partnerAv'), p ? p.name : '?', p && p.avatar_path);
+  syncPresence();
+}
+
+// Suhbatdosh onlaynmi? (profil keyinroq yuklansa ham to'g'ri hisoblanadi)
+function syncPresence() {
+  const state = S.channel ? S.channel.presenceState() : {};
+  S.partnerOnline = !!(S.partner && Object.prototype.hasOwnProperty.call(state, S.partner.id));
+  setStatus();
+}
+
+function setStatus() {
+  const el = $('partnerStatus');
+  if (!S.partner) { el.textContent = 'hali kirmagan'; el.className = 'who-status'; return; }
+  el.textContent = S.partnerOnline ? 'onlayn' : 'oflayn';
+  el.className = 'who-status' + (S.partnerOnline ? ' on' : '');
+}
+
+async function loadMessages() {
+  const { data, error } = await sb.from('ox_messages').select('*').order('id', { ascending: false }).limit(150);
+  if (error) throw error;
+  const list = data.reverse();
+  logEl.setAttribute('aria-live', 'off');
+  logEl.textContent = ''; S.ids.clear(); S.lastId = 0; S.lastDay = ''; S.prev = null;
+  await signMany(list.filter((m) => m.image_path).map((m) => m.image_path));
+  list.forEach(render);
+  logEl.setAttribute('aria-live', 'polite');
+  scrollDown();
+}
+
+function makeImg(path) {
+  const img = document.createElement('img');
+  img.alt = 'Yuborilgan rasm'; img.loading = 'lazy'; img.decoding = 'async';
+  const cached = S.urls.get(path);
+  if (cached) img.src = cached.url; else urlFor(path).then((u) => { if (u) img.src = u; });
+  let retried = false;
+  img.addEventListener('load', () => { img.classList.add('loaded'); if (S.nearBottom) scrollDown(); });
+  img.addEventListener('error', () => {              // havola eskirgan bo'lsa, bir marta yangilaymiz
+    if (retried) return;
+    retried = true; S.urls.delete(path);
+    urlFor(path).then((u) => { if (u) img.src = u; });
+  });
+  img.addEventListener('click', () => openLightbox(img.currentSrc || img.src));
+  return img;
+}
+
+// Xabarni ro'yxatga qo'shadi. Ichkarida ID bo'yicha takrorlanish tekshiriladi.
+function render(m) {
+  if (S.ids.has(m.id)) return false;
+  S.ids.add(m.id);
+  if (m.id > S.lastId) S.lastId = m.id;
+  const d = new Date(m.created_at), key = d.toDateString();
+  if (key !== S.lastDay) {
+    const s = document.createElement('div'); s.className = 'day'; s.textContent = dayLabel(d);
+    logEl.appendChild(s); S.lastDay = key; S.prev = null;
+  }
+  const mine = m.sender_id === S.me.id;
+  const row = document.createElement('div'); row.className = 'row ' + (mine ? 'me' : 'them');
+  if (S.prev && S.prev.mine === mine && d - S.prev.d < 120000) row.classList.add('tight');
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  if (m.image_path) { bubble.classList.add('img'); bubble.appendChild(makeImg(m.image_path)); }
+  else bubble.textContent = m.body || '';          // textContent: xabar ichidagi HTML hech qachon ishlamaydi
+  const time = document.createElement('div'); time.className = 'time'; time.textContent = fmtTime(d);
+  row.append(bubble, time); logEl.appendChild(row);
+  S.prev = { mine, d };
+  return true;
+}
+
+async function addIncoming(m, own) {
+  if (S.ids.has(m.id)) return;
+  if (m.image_path) await signMany([m.image_path]);
+  if (S.ids.has(m.id)) return;
+  const stick = own || S.nearBottom;
+  render(m);
+  if (stick) scrollDown(); else $('newPill').hidden = false;
+  if (!own && document.visibilityState === 'visible') clearNotifications();
+}
+
+// Ilova fonda bo'lganda o'tkazib yuborilgan xabarlarni olib keladi
+async function catchUp() {
+  if (!S.me) return;
+  const { data, error } = await sb.from('ox_messages').select('*').gt('id', S.lastId).order('id', { ascending: true }).limit(200);
+  if (!S.partner) loadProfiles().catch(() => {});
+  if (error || !data || !data.length) return;
+  await signMany(data.filter((m) => m.image_path).map((m) => m.image_path));
+  const stick = S.nearBottom;
+  data.forEach((m) => render(m));
+  if (stick) scrollDown(); else $('newPill').hidden = false;
+}
+
+function subscribe() {
+  if (S.channel) { sb.removeChannel(S.channel); S.channel = null; }
+  const ch = sb.channel('orbicxs-room', { config: { presence: { key: S.me.id } } });
+  ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ox_messages' },
+      (p) => addIncoming(p.new, p.new.sender_id === S.me.id))
+    .on('presence', { event: 'sync' }, () => {
+      syncPresence();
+      if (!S.partner) loadProfiles().catch(() => {});
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        try { await ch.track({ at: Date.now() }); } catch (e) { /* onlayn belgisi muhim emas */ }
+        catchUp();
+      }
+    });
+  S.channel = ch;
+}
+
+function ensureChannel() {
+  if (S.me && (!S.channel || S.channel.state === 'closed' || S.channel.state === 'errored')) subscribe();
+}
+
+/* ---------- Yuborish ---------- */
+input.setAttribute('enterkeyhint', isTouch ? 'enter' : 'send');
+function autosize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 132) + 'px';
+  if (S.nearBottom) scrollDown();
+}
+input.addEventListener('input', autosize);
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !isTouch) { e.preventDefault(); sendText(); }
+});
+$('composer').addEventListener('submit', (e) => { e.preventDefault(); sendText(); });
+
+async function sendText() {
+  const text = input.value.trim();
+  if (!text || !S.me) return;
+  input.value = ''; autosize();
+  input.focus({ preventScroll: true });             // klaviatura yopilib qolmasin
+  const { data, error } = await sb.from('ox_messages').insert({ body: text }).select().single();
+  if (error) {
+    if (!input.value) { input.value = text; autosize(); }
+    return toast('Yuborilmadi. Internetni tekshiring.');
+  }
+  addIncoming(data, true);
+}
+
+$('attachBtn').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', (e) => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (f) sendImage(f);
+});
+
+async function sendImage(file) {
+  if (!S.me) return;
+  if (!/^image\//.test(file.type)) return toast('Faqat rasm yuborish mumkin.');
+  $('attachBtn').disabled = true; toast('Rasm yuborilmoqda…', 20000);
+  try {
+    const blob = await compress(file, 1600, 0.82);
+    const path = S.me.id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+    const up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' });
+    if (up.error) throw up.error;
+    const { data, error } = await sb.from('ox_messages').insert({ image_path: path }).select().single();
+    if (error) throw error;
+    hideToast();
+    await addIncoming(data, true);
+  } catch (err) {
+    console.error(err);
+    toast('Rasm yuborilmadi: ' + ((err && err.message) || 'xatolik'));
+  } finally { $('attachBtn').disabled = false; }
+}
+
+/* ---------- Rasmni kattalashtirish va oynalar ---------- */
+function openLightbox(src) { if (!src) return; $('lbImg').src = src; $('lightbox').hidden = false; $('lbClose').focus(); }
+function closeLightbox() { $('lightbox').hidden = true; $('lbImg').removeAttribute('src'); }
+$('lbClose').addEventListener('click', closeLightbox);
+$('lightbox').addEventListener('click', (e) => { if (e.target === $('lightbox')) closeLightbox(); });
+$('sheetOk').addEventListener('click', closeSheet);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeLightbox(); closeSheet(); } });
+
+/* ---------- Bildirishnomalar (push) ---------- */
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Vaqt tugadi')), ms))]);
+
+function vapidBytes() {
+  const pad = '='.repeat((4 - (VAPID_PUBLIC_KEY.length % 4)) % 4);
+  const bin = atob((VAPID_PUBLIC_KEY + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+async function subscribePush() {
+  const reg = await withTimeout(navigator.serviceWorker.ready, 8000);
+  const key = vapidBytes();
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && sub.options && sub.options.applicationServerKey) {       // kalit almashgan bo'lsa, qaytadan obuna bo'lamiz
+    const cur = new Uint8Array(sub.options.applicationServerKey);
+    if (cur.length !== key.length || cur.some((v, i) => v !== key[i])) { await sub.unsubscribe(); sub = null; }
+  }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  const { error } = await sb.rpc('ox_register_push', { p_subscription: sub.toJSON(), p_user_agent: navigator.userAgent });
+  if (error) throw error;
+}
+
+async function initPush() {
+  const bell = $('bellBtn');
+  if (!pushOK) { bell.hidden = !(isIOS && !standalone); return; }     // iPhone'da Safari oynasida: yo'l-yo'riq ko'rsatamiz
+  if (Notification.permission === 'granted') {
+    try { await subscribePush(); bell.hidden = true; }
+    catch (err) { console.warn('push:', err); bell.hidden = false; }
+    return;
+  }
+  bell.hidden = false;
+}
+
+$('bellBtn').addEventListener('click', async () => {
+  if (!pushOK) {
+    return showSheet('Bildirishnomani yoqish',
+      'iPhone’da bildirishnoma faqat ilova Bosh ekranga qo‘shilgandan keyin ishlaydi: Safari’da “Ulashish” tugmasini bosing, “Bosh ekranga qo‘shish”ni tanlang, so‘ng OrbicXs’ni o‘sha belgidan oching va qo‘ng‘iroqcha tugmasini bosing.');
+  }
+  if (Notification.permission === 'denied') {
+    return showSheet('Bildirishnomalar o‘chirilgan', 'Telefon yoki brauzer sozlamalarida OrbicXs uchun bildirishnomalarga ruxsat bering, so‘ng sahifani yangilang.');
+  }
+  const perm = await Notification.requestPermission();            // foydalanuvchi bosganidan keyin birinchi chaqiruv
+  if (perm !== 'granted') return toast('Ruxsat berilmadi.');
+  try { await subscribePush(); $('bellBtn').hidden = true; toast('Bildirishnomalar yoqildi ✓'); }
+  catch (err) { console.error(err); toast('Yoqib bo‘lmadi: ' + ((err && err.message) || err)); }
+});
+
+// Ilova ochilganda tizim bildirishnomalarini tozalaymiz
+async function clearNotifications() {
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg) (await reg.getNotifications()).forEach((n) => n.close());
+  } catch (e) { /* muhim emas */ }
+}
+
+/* ---------- Chiqish, fon, ishga tushirish ---------- */
+$('outBtn').addEventListener('click', async () => {
+  if (!window.confirm('Chiqishni xohlaysizmi? Bu qurilmada bildirishnomalar to‘xtaydi.')) return;
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    const sub = reg && reg.pushManager ? await reg.pushManager.getSubscription() : null;
+    if (sub) await sb.rpc('ox_unregister_push', { p_endpoint: sub.endpoint });
+  } catch (err) { console.warn(err); }
+  await sb.auth.signOut();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !S.me) return;
+  clearNotifications(); catchUp(); ensureChannel();
+});
+window.addEventListener('online', () => { if (S.me) { catchUp(); ensureChannel(); } });
+
+(async function boot() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch((e) => console.warn('sw:', e));
+
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) { setTimeout(() => enter(data.session.user), 0); return; }
+  } catch (err) { console.warn(err); }
+  show('auth');
+})();
+})();
+</script>
+</body>
+</html>
