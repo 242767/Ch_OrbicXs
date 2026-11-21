@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MYSTERY LOVE — 3D World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#ffc66d;--pink:#ff75bd;--glass:rgba(12,10,25,.68)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050611;color:#fff;font-family:Manrope, sans-serif}
+#scene{position:fixed;inset:0}canvas{display:block}
+.hud{position:fixed;inset:0;pointer-events:none}
+.top{position:absolute;top:20px;left:26px;right:26px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:Cinzel,serif;color:var(--gold);font-size:clamp(17px,2.4vw,27px);letter-spacing:2px;text-shadow:0 0 18px #ff9b46}
+.brand small{display:block;font:11px Manrope;letter-spacing:3px;color:#e9d9c7;margin-top:3px}
+nav{display:flex;gap:8px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end}
+nav button,.action{border:1px solid rgba(255,198,109,.55);background:rgba(10,9,23,.65);color:#ffe4b5;border-radius:30px;padding:10px 15px;font:600 12px Manrope;cursor:pointer;backdrop-filter:blur(12px);transition:.2s}
+nav button:hover,.action:hover{background:rgba(255,173,82,.2);box-shadow:0 0 20px #ff9e4d55}
+.welcome{position:absolute;top:100px;left:26px;max-width:290px;padding:16px 19px;border:1px solid #ffbd7066;border-radius:18px;background:var(--glass);backdrop-filter:blur(12px);font-family:Cinzel,serif;color:#ffe6c4}
+.welcome span{display:block;font:italic 12px Manrope;color:#dfc9d8;margin-top:7px;line-height:1.6}
+.bottom{position:absolute;bottom:25px;left:50%;transform:translateX(-50%);text-align:center;width:min(90%,520px);pointer-events:auto}
+.bottom h1{font:600 clamp(20px,3vw,34px) Cinzel;color:var(--gold);margin:0 0 7px;text-shadow:0 0 24px #ff9f52}
+.bottom p{font-size:13px;color:#e8d9e9;margin:0 0 15px}
+.action{padding:13px 25px;background:linear-gradient(100deg,#a84d6fbb,#b77a2abb);font-size:13px}
+.hint{position:absolute;bottom:17px;right:22px;color:#c9b7d4;font-size:10px;opacity:.8}
+.panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#02030bd9;backdrop-filter:blur(9px);padding:20px;pointer-events:auto}
+.panel.show{display:flex}
+.dialog{width:min(460px,100%);border:1px solid #ffc66d88;border-radius:22px;padding:26px;background:linear-gradient(145deg,#1a1027,#080a19);box-shadow:0 0 55px #ff9c4b22;text-align:center}
+.dialog h2{font:600 24px Cinzel;color:var(--gold);margin:0 0 12px}
+.dialog p{color:#e5d8e9;line-height:1.8;font-size:14px}
+.dialog button{margin-top:12px}
+@media(max-width:650px){.top{top:14px;left:14px;right:14px;align-items:flex-start}.brand{font-size:16px}nav{max-width:56%}nav button{padding:8px 10px;font-size:10px}.welcome{top:92px;left:14px;max-width:220px;padding:12px;font-size:13px}.bottom{bottom:40px}.hint{display:none}}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="hud">
+ <header class="top">
+  <div class="brand">✧ MYSTERY LOVE<small>A WORLD CREATED FOR YOU</small></div>
+  <nav>
+   <button data-place="home">Bosh sahifa</button><button data-place="universe">Koinot</button><button data-place="garden">Bog‘</button><button data-place="memories">Xotiralar</button><button data-place="letters">Maktublar</button>
+  </nav>
+ </header>
+ <div class="welcome">Xush kelibsiz, <b id="recipient">Azizim</b> ♡<span>Ba’zi olamlar faqat bitta inson uchun yaratiladi...</span></div>
+ <div class="bottom"><h1>Mening sirli olamim</h1><p>Har bir orol ortida siz uchun alohida bir sir bor.</p><button class="action" id="explore">Dunyoni kashf etish ✧</button></div>
+ <div class="hint">Sichqoncha yoki barmoq bilan aylantiring · yaqinlashtirish uchun scroll/pinch</div>
+</div>
+<div class="panel" id="panel"><div class="dialog"><h2 id="panelTitle"></h2><p id="panelText"></p><button class="action" id="close">Davom etish</button></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const recipient = "Azizim"; // Shu yerda ismni o‘zgartiring
+document.querySelector('#recipient').textContent = recipient;
+const host=document.querySelector('#scene');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x050611); scene.fog=new THREE.FogExp2(0x08091b,.012);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,500); camera.position.set(0,12,29);
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.25; host.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=.045; controls.minDistance=12; controls.maxDistance=55; controls.maxPolarAngle=Math.PI*.49; controls.target.set(0,4,0);
+scene.add(new THREE.HemisphereLight(0x9dbbff,0x16091e,1.6));
+const goldLight=new THREE.PointLight(0xffa94f,180,55); goldLight.position.set(0,9,2); scene.add(goldLight);
+const pinkLight=new THREE.PointLight(0xff4fa9,95,45); pinkLight.position.set(-12,5,-5); scene.add(pinkLight);
+const mat=(color,metalness=.25,roughness=.45,emissive=0x000000)=>new THREE.MeshStandardMaterial({color,metalness,roughness,emissive,emissiveIntensity:.7});
+const gold=mat(0xffbd62,.7,.25,0x7a3208), dark=mat(0x17152b,.25,.65), rock=mat(0x24243d,.1,.9), pink=mat(0xc94d91,.3,.35,0x3d0925), water=mat(0x282b58,.5,.2,0x171d65);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(70,96),mat(0x090b1c,.1,.8)); floor.rotation.x=-Math.PI/2; floor.position.y=-7; scene.add(floor);
+function island(x,y,z,s=1,kind='normal'){
+ const g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(s);scene.add(g);
+ const top=new THREE.Mesh(new THREE.CylinderGeometry(3.3,1.1,1.7,8,1),rock);top.position.y=0;g.add(top);
+ const cap=new THREE.Mesh(new THREE.CylinderGeometry(3.35,3.2,.22,8),dark);cap.position.y=.88;g.add(cap);
+ const grass=new THREE.Mesh(new THREE.CylinderGeometry(3.15,3.1,.12,8),mat(kind==='garden'?0x315b43:0x292744));grass.position.y=1;g.add(grass);
+ for(let i=0;i<7;i++){let a=i*Math.PI*2/7;let crystal=new THREE.Mesh(new THREE.ConeGeometry(.22,.9,5),i%2?pink:gold);crystal.position.set(Math.cos(a)*2.5,-.1,Math.sin(a)*2.5);crystal.rotation.z=.25;g.add(crystal);}
+ return g;
+}
+function portal(x,y,z,scale=1){
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(1.55,.13,16,80),gold);ring.position.set(x,y,z);ring.scale.setScalar(scale);scene.add(ring);
+ const inner=new THREE.Mesh(new THREE.CircleGeometry(1.42,48),new THREE.MeshBasicMaterial({color:0x57275d,transparent:true,opacity:.35,side:THREE.DoubleSide}));inner.position.set(x,y,z-.04);inner.scale.setScalar(scale);scene.add(inner);
+ const glow=new THREE.PointLight(0xff71bd,12,10);glow.position.set(x,y,z+1);scene.add(glow);
+}
+const center=island(0,1,0,1.55); 
+// Central crystal-heart inspired centerpiece
+const heartGroup=new THREE.Group();heartGroup.position.set(0,5,0);scene.add(heartGroup);
+const heartMat=new THREE.MeshPhysicalMaterial({color:0xff8bc5,metalness:.3,roughness:.12,transmission:.25,thickness:1,emissive:0x6c164a,emissiveIntensity:1});
+const heart=new THREE.Mesh(new THREE.IcosahedronGeometry(1.25,1),heartMat);heart.scale.set(1,.86,.55);heartGroup.add(heart);
+const halo=new THREE.Mesh(new THREE.TorusGeometry(2,.035,8,100),gold);halo.rotation.x=Math.PI/2.5;heartGroup.add(halo);
+const destinations=[
+ {id:'universe',x:-11,y:0,z:-4,title:'Koinot',text:'Bu yerda yulduzlar orasida siz uchun saqlangan tilaklar yashaydi.'},
+ {id:'garden',x:-7,y:1,z:9,title:'Sehrli bog‘',text:'Gullar, mayin chiroqlar va eng go‘zal xotiralar bog‘i.'},
+ {id:'memories',x:10,y:1,z:-5,title:'Xotiralar',text:'Birgalikdagi unutilmas lahzalar shu orolda saqlanadi.'},
+ {id:'letters',x:11,y:0,z:8,title:'Maxfiy maktublar',text:'Siz uchun yozilgan samimiy so‘zlar va kichik sirlar.'}
+];
+const islands=[];
+destinations.forEach((d,i)=>{let obj=island(d.x,d.y,d.z,.85,i===1?'garden':'normal');islands.push(obj);portal(d.x,d.y+2.2,d.z, .72);});
+portal(0,4.2,0,1.05);
+// floating castle made from simple architectural geometry
+const castle=new THREE.Group();castle.position.set(0,4.3,-8);scene.add(castle);
+const base=new THREE.Mesh(new THREE.BoxGeometry(5,3,4),mat(0x6b4860,.45,.4));base.position.y=1.5;castle.add(base);
+for(let i=0;i<5;i++){let x=(i-2)*1.05;let tower=new THREE.Mesh(new THREE.CylinderGeometry(.42,.6,4.4,8),mat(0x9b6a79,.55,.35));tower.position.set(x,3.3,0);castle.add(tower);let roof=new THREE.Mesh(new THREE.ConeGeometry(.7,1.7,8),gold);roof.position.set(x,6.3,0);castle.add(roof);}
+const starGeo=new THREE.BufferGeometry(), starPos=[];for(let i=0;i<1800;i++)starPos.push((Math.random()-.5)*180,Math.random()*100-10,(Math.random()-.5)*180);
+starGeo.setAttribute('position',new THREE.Float32BufferAttribute(starPos,3));const stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffe0b0,size:.13,transparent:true,opacity:.9}));scene.add(stars);
+const moon=new THREE.Mesh(new THREE.SphereGeometry(3.2,32,32),new THREE.MeshBasicMaterial({color:0xffd59a}));moon.position.set(17,17,-22);scene.add(moon);
+const moonGlow=new THREE.PointLight(0xffbd80,35,50);moonGlow.position.copy(moon.position);scene.add(moonGlow);
+// drifting particles
+const dustGeo=new THREE.BufferGeometry(), dust=[];for(let i=0;i<250;i++)dust.push((Math.random()-.5)*45,Math.random()*18-2,(Math.random()-.5)*45);
+dustGeo.setAttribute('position',new THREE.Float32BufferAttribute(dust,3));const dustPoints=new THREE.Points(dustGeo,new THREE.PointsMaterial({color:0xff8fc8,size:.09,transparent:true,opacity:.8}));scene.add(dustPoints);
+const panel=document.querySelector('#panel');
+function openPlace(id){if(id==='home'){camera.position.set(0,12,29);controls.target.set(0,4,0);return;}let d=destinations.find(v=>v.id===id);if(!d)return;document.querySelector('#panelTitle').textContent=d.title;document.querySelector('#panelText').textContent=d.text;panel.classList.add('show');}
+document.querySelectorAll('[data-place]').forEach(b=>b.addEventListener('click',()=>openPlace(b.dataset.place)));
+document.querySelector('#explore').addEventListener('click',()=>{camera.position.set(0,10,22);controls.target.set(0,4,0);});
+document.querySelector('#close').addEventListener('click',()=>panel.classList.remove('show'));
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);let t=clock.getElapsedTime();heartGroup.position.y=5+Math.sin(t*1.3)*.22;heart.rotation.y=t*.28;halo.rotation.z=t*.18;islands.forEach((o,i)=>o.position.y=[0,1,0,1][i]+Math.sin(t*.7+i)*.13);stars.rotation.y=t*.003;dustPoints.rotation.y=t*.012;controls.update();renderer.render(scene,camera);}
+animate();
+</script>
+</body></html>
