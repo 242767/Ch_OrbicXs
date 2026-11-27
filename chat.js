@@ -4,12 +4,14 @@ import { h, icon } from "../dom.js";
 import { errorText } from "../ui.js";
 import { avatar } from "../parts.js";
 import * as chat from "../chatapi.js";
+import * as push from "../push.js";
 import { listTime, snippetOf } from "./chat_text.js";
 import { newChatDialog, newGroupDialog } from "./chat_dialogs.js";
 import { createConvo } from "./chat_convo.js";
 
 const POLL_VISIBLE = 6000;
 const POLL_HIDDEN = 30000;
+const MUTES_EVERY = 60000; // ovozsiz suhbatlar ro'yxati shuncha vaqtda bir qayta o'qiladi (muddati tugaganlari ham shu bilan yangilanadi)
 const FILTER_FROM = 6; // shuncha suhbatdan boshlab qidiruv maydoni ko'rinadi
 
 // Bu xatolardan keyin ro'yxatni o'zi qayta so'ramaymiz (ruxsat yo'q, messenjer o'rnatilmagan, hisob yaroqsiz)
@@ -36,6 +38,11 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
   let listScroll = 0;
   const drafts = new Map(); // suhbatdan chiqib ketilganda yozib qo'yilgan matn saqlanadi
   const rowCache = new Map(); // suhbat raqami -> {sig, el}
+  let mutes = new Map(); // ovozsiz suhbatlar: suhbat raqami -> {until: millisekund, 0 — doimiy}
+  let mutesOk = true; // false: bildirishnoma funksiyalari bazada yo'q (5-bildirishnoma.sql): ovozsiz tugmasi ko'rinmaydi
+  let mutesKnown = false; // true: ovozsiz ro'yxati bir marta muvaffaqiyatli yuklandi (bildirishnoma funksiyalari bazada borligi aniq)
+  let mutesAt = 0;
+  let mutesBusy = false;
 
   // -------------------------------------------------------------------------
   // Tuzilma
@@ -44,8 +51,9 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
   const q = h("input", { class: "input mlist__q", type: "text", name: "chatq", placeholder: "Suhbatlarni qidirish", "aria-label": "Suhbatlarni qidirish", maxlength: "60", autocomplete: "off", spellcheck: "false" });
   const qBox = h("div", { class: "mlist__search", hidden: true }, icon("search"), q);
   const note = h("div", { class: "notice notice--warn mlist__note", role: "status", hidden: true });
+  const hint = h("div", { class: "notice mlist__hint", hidden: true });
   const rows = h("ul", { class: "mlist__rows" });
-  const body = h("div", { class: "mlist__body" }, note, rows);
+  const body = h("div", { class: "mlist__body" }, hint, note, rows);
   const listEl = h("aside", { class: "msgr__list", "aria-label": "Suhbatlar" }, h("header", { class: "mlist__head" }, h("h1", null, "Xabarlar"), newBtn), qBox, body);
   const pane = h("section", { class: "msgr__pane", "aria-label": "Suhbat" });
   const root = h("div", { class: "msgr" }, listEl, pane);
@@ -56,9 +64,14 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
   // -------------------------------------------------------------------------
   // Ro'yxat qatorlari
   // -------------------------------------------------------------------------
+  const isMuted = (cid) => {
+    const m = mutes.get(cid);
+    return !!m && (m.until === 0 || m.until > Date.now());
+  };
+
   const rowSig = (it, sel) => {
     const l = it.last;
-    return [nameOf(it), it.kind, it.unread, listTime(it.lastAt), l ? l.seq + ":" + l.rev + ":" + (l.sender === me ? 1 : 0) : "-", sel ? 1 : 0, it.peer && !it.peer.available ? 1 : 0].join("|");
+    return [nameOf(it), it.kind, it.unread, listTime(it.lastAt), l ? l.seq + ":" + l.rev + ":" + (l.sender === me ? 1 : 0) : "-", sel ? 1 : 0, it.peer && !it.peer.available ? 1 : 0, isMuted(it.id) ? 1 : 0].join("|");
   };
 
   function buildRow(it, sel) {
@@ -67,15 +80,22 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
     const text = l ? (own ? "Siz: " : "") + snippetOf(l) : it.kind === "group" ? "Guruh yaratildi" : "Hali xabar yo'q";
     const lead =
       it.kind === "group" ? h("span", { class: "av av--group", "aria-hidden": "true" }, icon("users")) : avatar({ display_name: nameOf(it), role: "user", status: it.peer && !it.peer.available ? "blocked" : "active" });
-    const badge = it.unread > 0 ? h("span", { class: "mrow__badge num" }, h("span", { class: "sr" }, "O'qilmagan: "), it.unread > 99 ? "99+" : String(it.unread)) : null;
+    const muted = isMuted(it.id);
+    const badge = it.unread > 0 ? h("span", { class: "mrow__badge num" + (muted ? " mrow__badge--muted" : "") }, h("span", { class: "sr" }, "O'qilmagan: "), it.unread > 99 ? "99+" : String(it.unread)) : null;
     const a = h(
       "a",
-      { class: "mrow" + (it.unread > 0 ? " mrow--unread" : ""), href: "#/chat/" + it.id, dataset: { id: it.id } },
+      { class: "mrow" + (it.unread > 0 ? " mrow--unread" : "") + (muted ? " mrow--muted" : ""), href: "#/chat/" + it.id, dataset: { id: it.id } },
       lead,
       h(
         "span",
         { class: "mrow__main" },
-        h("span", { class: "mrow__top" }, h("span", { class: "mrow__name" }, nameOf(it)), h("time", { class: "mrow__time num", datetime: it.lastAt || null }, listTime(it.lastAt))),
+        h(
+          "span",
+          { class: "mrow__top" },
+          h("span", { class: "mrow__name" }, nameOf(it)),
+          muted ? h("span", { class: "mrow__muted", title: "Bildirishnomalar ovozsiz" }, icon("belloff"), h("span", { class: "sr" }, "Bildirishnomalar ovozsiz")) : null,
+          h("time", { class: "mrow__time num", datetime: it.lastAt || null }, listTime(it.lastAt)),
+        ),
         h("span", { class: "mrow__bottom" }, h("span", { class: "mrow__text" }, text), badge),
       ),
     );
@@ -182,6 +202,7 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
       items = r.items;
       w.report(r.unread);
       renderList();
+      if (Date.now() - mutesAt > MUTES_EVERY) loadMutes();
     } catch (e) {
       if (disposed || (e && e.fatal)) return;
       if (e && STOP.has(e.code)) {
@@ -203,6 +224,93 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
       }
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Ovozsiz suhbatlar (5-bildirishnoma.sql): ro'yxatdagi belgi va suhbat sarlavhasidagi tugma shundan foydalanadi
+  // -------------------------------------------------------------------------
+  const untilMs = (iso) => {
+    if (!iso) return 0;
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? t : 0;
+  };
+
+  async function loadMutes() {
+    if (mutesBusy || disposed || !mutesOk) return;
+    mutesBusy = true;
+    mutesAt = Date.now(); // xato bo'lsa ham har oynada qayta urinmaymiz
+    try {
+      const list = await push.loadMutes();
+      if (disposed) return;
+      mutes = new Map(list.map((x) => [x.conversation_id, { until: untilMs(x.until) }]));
+      mutesOk = true;
+      mutesKnown = true;
+      paintHint();
+      renderList();
+      if (convo) convo.paintMute();
+    } catch (e) {
+      if (disposed || (e && e.fatal)) return;
+      if (e && (e.code === "push_missing" || e.code === "no_permission" || e.code === "forbidden")) {
+        mutesOk = false;
+        paintHint();
+        if (convo) convo.paintMute();
+      }
+    } finally {
+      mutesBusy = false;
+    }
+  }
+
+  const muteApi = {
+    available: () => mutesOk,
+    state(cid) {
+      const m = mutes.get(cid);
+      return isMuted(cid) ? { muted: true, until: m.until } : { muted: false, until: 0 };
+    },
+    async set(cid, minutes) {
+      const r = await push.mute(cid, minutes);
+      mutes.set(cid, { until: untilMs(r && r.until) });
+      renderList();
+    },
+    async clear(cid) {
+      await push.unmute(cid);
+      mutes.delete(cid);
+      renderList();
+    },
+  };
+
+  // -------------------------------------------------------------------------
+  // «Bildirishnomani yoqing» eslatmasi (bir marta, yopilguncha)
+  // -------------------------------------------------------------------------
+  function paintHint() {
+    // Eslatma faqat bildirishnoma funksiyalari bazada borligi aniq bo'lgach chiqadi: yo'q bo'lsa foydalanuvchi uni baribir yoqa olmaydi
+    const want = !disposed && mutesKnown && mutesOk && push.hintWanted(ctx.account);
+    hint.hidden = !want;
+    if (!want) {
+      hint.replaceChildren();
+      return;
+    }
+    if (hint.firstChild) return;
+    hint.append(
+      h("p", null, "Yangi xabar kelganda telefon yoki kompyuteringizga bildirishnoma kelishi uchun uni yoqing."),
+      h(
+        "div",
+        { class: "mlist__hint-acts" },
+        h("a", { class: "btn btn--ghost btn--sm", href: "#/cabinet/bildirishnoma" }, icon("bell"), "Sozlash"),
+        h(
+          "button",
+          {
+            class: "btn btn--quiet btn--sm",
+            type: "button",
+            onclick() {
+              push.dismissHint(ctx.account);
+              paintHint();
+            },
+          },
+          "Hozir emas",
+        ),
+      ),
+    );
+  }
+  const offPush = push.onChange(paintHint);
 
   const wake = () => {
     if (disposed || document.visibilityState !== "visible") return;
@@ -246,6 +354,7 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
       w.report(total);
     },
     drafts,
+    mute: muteApi,
     hint: it ? { title: nameOf(it) } : null,
   });
 
@@ -295,6 +404,8 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
   w.drive(true);
   renderList();
   pane.replaceChildren(emptyPane());
+  paintHint();
+  loadMutes();
   refreshList();
   if (id) route(id);
 
@@ -302,9 +413,14 @@ export function chatView(ctx, { id = "", watch = null, setTitle = () => {} } = {
     el: root,
     title: "Xabarlar",
     route,
+    /** Xizmat ishchisi yangi turtki haqida xabar berdi: ro'yxat darhol yangilanadi */
+    poke() {
+      if (!disposed) queueRefresh(0);
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
+      offPush();
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("online", wake);

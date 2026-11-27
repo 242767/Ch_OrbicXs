@@ -337,3 +337,74 @@ export function credentialsDialog({ title, lead, login, password }) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Tugma yonida ochiladigan kichik menyu. Bir vaqtda faqat bittasi ochiq turadi.
+// items: {icon, label, onSelect, danger} — tanlanadigan qator; {note} — izoh matni; {divider: true} — chiziq.
+// Esc, tashqariga bosish, oyna o'lchamining o'zgarishi menyuni yopadi; ↑/↓ qatorlar bo'ylab yuradi.
+// ---------------------------------------------------------------------------
+let openPop = null;
+
+export function popMenu({ opener, items, label = "Menyu", align = "end" }) {
+  if (openPop) openPop.close(false);
+  const btns = [];
+  const nodes = items.map((it) => {
+    if (it.note) return h("p", { class: "menu__note", role: "presentation" }, it.note);
+    if (it.divider) return h("div", { class: "menu__sep", role: "separator" });
+    const b = h("button", { class: "menu__item" + (it.danger ? " menu__item--danger" : ""), type: "button", role: "menuitem" }, it.icon ? icon(it.icon) : null, it.label);
+    b.addEventListener("click", () => {
+      pop.close(false);
+      it.onSelect();
+    });
+    btns.push(b);
+    return b;
+  });
+  const el = h("div", { class: "menu", role: "menu", "aria-label": label }, nodes);
+  document.body.append(el);
+  const r = opener.getBoundingClientRect();
+  const mw = el.offsetWidth;
+  const mh = el.offsetHeight;
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  let left = align === "end" ? r.right - mw : r.left;
+  left = Math.min(Math.max(8, left), Math.max(8, window.innerWidth - mw - 8));
+  el.style.top = Math.round(top) + "px";
+  el.style.left = Math.round(left) + "px";
+  opener.setAttribute("aria-expanded", "true");
+
+  const onDown = (e) => {
+    if (!el.contains(e.target) && !opener.contains(e.target)) pop.close(false);
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      pop.close(true);
+    } else if (e.key === "Tab") {
+      pop.close(false);
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && btns.length) {
+      e.preventDefault();
+      const i = btns.indexOf(document.activeElement);
+      btns[(i + (e.key === "ArrowDown" ? 1 : -1) + btns.length) % btns.length].focus();
+    }
+  };
+  const onResize = () => pop.close(false);
+  document.addEventListener("pointerdown", onDown, true);
+  document.addEventListener("keydown", onKey, true);
+  window.addEventListener("resize", onResize);
+  const pop = {
+    el,
+    close(refocus = true) {
+      if (openPop !== pop) return;
+      openPop = null;
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("resize", onResize);
+      el.remove();
+      opener.removeAttribute("aria-expanded");
+      if (refocus && opener.isConnected) opener.focus();
+    },
+  };
+  openPop = pop;
+  if (btns.length) btns[0].focus();
+  return pop;
+}

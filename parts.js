@@ -59,7 +59,35 @@ export const EVENTS = {
   "mfa.removed": "2FA qurilmasi olib tashlandi",
   "account.reset_mfa": "2FA tiklandi (administrator tomonidan)",
   "session.revoke": "Seans yopildi",
+  "push.enable": "Bildirishnoma yoqildi",
+  "push.disable": "Bildirishnoma o'chirildi",
 };
+
+// Kabinetdagi «Faollik» ro'yxati: hodisa shu odamga nima bo'lganini aytadi. ev = {action, by, info} (ox_my_activity).
+export function activityText(ev) {
+  const info = ev && ev.info && typeof ev.info === "object" && !Array.isArray(ev.info) ? ev.info : {};
+  const withName = (base, v) => (typeof v === "string" && v ? base + ": " + v : base);
+  const count = Number.isInteger(info.count) && info.count > 0 ? " (" + info.count + " ta)" : "";
+  switch (ev && ev.action) {
+    case "account.create": return "Hisobingiz yaratildi";
+    case "account.update": return "Hisobingiz ma'lumotlari o'zgartirildi";
+    case "account.block": return "Hisobingiz bloklandi";
+    case "account.unblock": return "Hisobingiz blokdan chiqarildi";
+    case "account.reset_mfa": return "2FA qurilmalaringiz olib tashlandi";
+    case "password.change": return "Parolingiz almashtirildi";
+    case "password.change_failed": return "Parolni almashtirishga urinildi (joriy parol noto'g'ri edi)";
+    case "password.reset": return "Parolingiz administrator tomonidan tiklandi";
+    case "mfa.enrolled": return withName("2FA qurilmasi ulandi", info.name);
+    case "mfa.removed": return withName("2FA qurilmasi olib tashlandi", info.name);
+    case "session.revoke":
+      return info.scope === "one" ? "Seanslardan biri yopildi" : info.scope === "others" ? "Boshqa qurilmalardagi seanslar yopildi" + count : info.scope === "all" ? "Barcha seanslar yopildi" + count : "Seans yopildi";
+    case "push.enable": return withName("Bildirishnoma yoqildi", info.label);
+    case "push.disable": return withName("Bildirishnoma o'chirildi", info.label);
+    default: return EVENTS[ev && ev.action] || String((ev && ev.action) || "Hodisa");
+  }
+}
+export const activityIcon = (action) => (/^push\./.test(String(action)) ? "bell" : /^account\./.test(String(action)) ? "user" : "shield");
+export const actorText = (login) => (!login ? "" : login === "sql-editor" ? "SQL muharriri" : login === "system" ? "Tizim" : "administrator @" + login);
 
 // Seans qatoridagi brauzer qatoridan odam o'qiydigan nom: «Chrome, Windows». Qator aniq bo'lmasa — «Noma'lum qurilma».
 export function deviceLabel(ua) {

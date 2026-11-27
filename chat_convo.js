@@ -2,9 +2,10 @@
 // Xabarlar ro'yxati, yangilanishlarni vaqti-vaqti bilan so'rab turish (ochiq oynada ~3 soniyada bir), yozish paneli, rasm va fayl biriktirish.
 // Serverdan kelgan har qanday matn faqat matn tuguni sifatida qo'yiladi (innerHTML yo'q).
 import { h, icon, copyText } from "../dom.js";
-import { confirmDialog, errorText, toast } from "../ui.js";
+import { confirmDialog, errorText, popMenu, toast } from "../ui.js";
 import { avatar } from "../parts.js";
 import * as chat from "../chatapi.js";
+import * as push from "../push.js";
 import { dayKey, dayLabel, linkify, quoteText, snippetOf, systemText, timeHM } from "./chat_text.js";
 import { groupInfoDialog, lightbox } from "./chat_dialogs.js";
 
@@ -34,6 +35,7 @@ export function createConvo({ id, ctx, host }) {
   let lastReadSent = 0;
   let menuEl = null;
   let menuOff = null;
+  let muteMenu = null; // ochiq «bildirishnomalar» menyusi
 
   const nameOf = (uid) => (uid === me ? "Siz" : (st.people[uid] && st.people[uid].name) || (st.members.find((m) => m.id === uid) || {}).name || "Foydalanuvchi");
   const peerOf = () => st.members.find((m) => m.id !== me) || null;
@@ -46,12 +48,14 @@ export function createConvo({ id, ctx, host }) {
   const sub = h("p", { class: "convo__sub" }, "");
   const avSlot = h("span", { class: "convo__av" });
   const infoBtn = h("button", { class: "iconbtn", type: "button", "aria-label": "Guruh haqida", hidden: true, onclick: () => openInfo() }, icon("info"));
+  const bellBtn = h("button", { class: "iconbtn convo__bell", type: "button", "aria-haspopup": "menu", hidden: true, onclick: () => openMuteMenu() });
   const head = h(
     "header",
     { class: "convo__head" },
     h("a", { class: "iconbtn convo__back", href: "#/chat", "aria-label": "Suhbatlar ro'yxatiga qaytish" }, icon("back")),
     avSlot,
     h("div", { class: "convo__who" }, title, sub),
+    bellBtn,
     infoBtn,
   );
   const banner = h("div", { class: "convo__banner", role: "status", hidden: true });
@@ -100,6 +104,71 @@ export function createConvo({ id, ctx, host }) {
     infoBtn.hidden = c.kind !== "group";
     host.title(name);
     paintLock();
+    paintBell();
+  }
+
+  // -------------------------------------------------------------------------
+  // Bildirishnomalarni ovozsiz qilish (faqat shu suhbat uchun; xabarlar ro'yxatda baribir ko'rinadi)
+  // -------------------------------------------------------------------------
+  const MUTE_CHOICES = [
+    ["1 soatga", 60],
+    ["8 soatga", 480],
+    ["1 haftaga", 10080],
+    ["Doimiy", null],
+  ];
+
+  function paintBell() {
+    const m = host.mute;
+    bellBtn.hidden = !(m && m.available());
+    if (bellBtn.hidden) return;
+    const s = m.state(id);
+    bellBtn.replaceChildren(icon(s.muted ? "belloff" : "bell"));
+    const text = s.muted ? "Bildirishnomalar ovozsiz" : "Bildirishnomalar";
+    bellBtn.setAttribute("aria-label", text);
+    bellBtn.title = text;
+    bellBtn.classList.toggle("convo__bell--muted", s.muted);
+  }
+
+  const untilText = (until) => {
+    if (!until) return "Doimiy ovozsiz.";
+    const d = new Date(until);
+    const sameDay = d.toDateString() === new Date().toDateString();
+    const hm = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+    return "Ovozsiz: " + (sameDay ? "bugun " + hm : d.getDate() + "." + String(d.getMonth() + 1).padStart(2, "0") + " " + hm) + " gacha.";
+  };
+
+  async function applyMute(minutes) {
+    try {
+      await host.mute.set(id, minutes);
+      if (disposed) return;
+      paintBell();
+      toast("ok", minutes === null ? "Suhbat ovozsiz qilindi." : "Suhbat ovozsiz qilindi: " + MUTE_CHOICES.find((c) => c[1] === minutes)[0] + ".");
+    } catch (e) {
+      if (disposed || (e && e.fatal)) return;
+      toast("error", errorText(e));
+    }
+  }
+
+  async function clearMute() {
+    try {
+      await host.mute.clear(id);
+      if (disposed) return;
+      paintBell();
+      toast("ok", "Bu suhbatdan bildirishnomalar yoqildi.");
+    } catch (e) {
+      if (disposed || (e && e.fatal)) return;
+      toast("error", errorText(e));
+    }
+  }
+
+  function openMuteMenu() {
+    const m = host.mute;
+    if (!m || !m.available()) return;
+    const s = m.state(id);
+    const items = s.muted
+      ? [{ note: untilText(s.until) + " Yangi xabarlar ro'yxatda ko'rinadi, lekin qurilmaga bildirishnoma yuborilmaydi." }, { icon: "bell", label: "Ovozni yoqish", onSelect: clearMute }]
+      : [{ note: "Yangi xabar kelganda qurilmaga bildirishnoma yuborilmasin:" }, ...MUTE_CHOICES.map(([label, minutes]) => ({ icon: "belloff", label, onSelect: () => applyMute(minutes) }))];
+    muteMenu = popMenu({ opener: bellBtn, items, label: "Bildirishnomalar" });
   }
 
   function paintLock() {
@@ -821,6 +890,7 @@ export function createConvo({ id, ctx, host }) {
       releasePreview(p.att);
       render({ bottom: true });
       host.touch();
+      if (!res.duplicate) push.notifySent(id, res.message.seq); // qolgan a'zolarning qurilmalariga «Yangi xabar» turtkisi
     } catch (e) {
       if (disposed || (e && e.fatal)) return;
       p.state = "failed";
@@ -1025,12 +1095,17 @@ export function createConvo({ id, ctx, host }) {
     focusHead() {
       title.focus({ preventScroll: true });
     },
+    /** Ovozsiz holati o'zgargan (ro'yxat yangilandi): tugma belgisini yangilaydi */
+    paintMute() {
+      if (!disposed) paintBell();
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
       clearTimeout(timer);
       clearTimeout(readTimer);
       closeMenu(false);
+      if (muteMenu) muteMenu.close(false);
       document.removeEventListener("visibilitychange", wake);
       window.removeEventListener("online", wake);
       if (io) io.disconnect();

@@ -70,6 +70,12 @@ export function createUnreadWatcher(onChange) {
     report(n) {
       set(n);
     },
+    /** Xizmat ishchisi yangi turtki haqida xabar berdi: hisoblagich darhol yangilanadi (ekran boshqarayotgan bo'lsa, ekranning o'zi yangilaydi). */
+    poke() {
+      if (!alive || stopped) return;
+      fails = 0;
+      plan(0);
+    },
     /** Ekran ochilganda true (o'zi so'rash to'xtaydi), yopilganda false (darhol yangilanadi). */
     drive(v) {
       driven = !!v;

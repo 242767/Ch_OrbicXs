@@ -7,11 +7,12 @@ import { loginView } from "./js/views/login.js";
 import { forceView } from "./js/views/force.js";
 import { mfaEnrollView, mfaVerifyView } from "./js/views/mfa.js";
 import { diagnosisBox, noticeView } from "./js/views/notice.js";
-import { cabinetView } from "./js/views/cabinet.js";
+import { CABINET_SECTIONS, cabinetView } from "./js/views/cabinet.js";
 import { usersView } from "./js/views/users.js";
 import { auditView } from "./js/views/audit.js";
 import { chatView } from "./js/views/chat.js";
 import { createUnreadWatcher } from "./js/chatwatch.js";
+import * as push from "./js/push.js";
 
 const root = document.getElementById("root");
 const BRAND = "OrbicXs";
@@ -44,6 +45,7 @@ const ROUTES = {
 
 const hasPerm = (p) => !!S.account && Array.isArray(S.account.permissions) && S.account.permissions.includes(p);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const CAB_KEYS = new Set(CABINET_SECTIONS.map((s) => s.key));
 
 function runCleanup() {
   const fn = S.cleanup;
@@ -355,6 +357,7 @@ function setTitle(t) {
 // Menyudagi nishon (rail va pastki panel) va sahifa sarlavhasi
 function paintBadge(n) {
   S.unread = n;
+  push.appBadge(n); // o'rnatilgan ilova belgisidagi raqam (qo'llab-quvvatlanmasa, hech narsa qilmaydi)
   if (S.shell) {
     for (const b of S.shell.el.querySelectorAll("[data-badge]")) {
       b.textContent = n > 99 ? "99+" : String(n);
@@ -371,10 +374,23 @@ function paintBadge(n) {
 // Ilova qobig'i almashtirilganda yoki chiqilganda: ochiq bo'lim va hisoblagich to'xtatiladi (suhbat rasmlari ham xotiradan olib tashlanadi)
 function teardownApp() {
   teardownView();
+  push.stop();
+  push.appBadge(0);
   if (S.watch) S.watch.destroy();
   S.watch = null;
   S.unread = 0;
   S.route = null;
+}
+
+// Xizmat ishchisidan: bildirishnoma bosildi (xabarlar ochiladi) yoki yangi turtki keldi (ro'yxat va hisoblagich darhol yangilanadi)
+function openChatFromPush() {
+  if (S.screen === "app" && hasPerm("messenger") && !/^#\/chat/.test(location.hash)) location.hash = "#/chat";
+}
+
+function pokeFromPush() {
+  if (S.screen !== "app") return;
+  if (S.watch) S.watch.poke();
+  if (S.view && typeof S.view.poke === "function") S.view.poke();
 }
 
 function showApp() {
@@ -382,15 +398,22 @@ function showApp() {
   mount("app", S.shell.el, null, teardownApp); // avvalgi qobiqning tozalashi shu yerda bajariladi — hisoblagich undan KEYIN yaratiladi
   S.watch = hasPerm("messenger") ? createUnreadWatcher(paintBadge) : null;
   if (S.watch) S.watch.start();
+  push.start({ account: S.account, onOpenChat: openChatFromPush, onPoke: pokeFromPush });
   renderRoute();
 }
 
-// #/chat/<uuid> — suhbat; qolganlari #/<bo'lim>
+// #/chat/<uuid> — suhbat; #/cabinet/<bo'lim> — kabinet bo'limi; qolganlari #/<bo'lim>
 function parseHash() {
   const m = /^#\/([a-z]+)(?:\/([^/?#]*))?/.exec(location.hash);
   const name = m ? m[1] : "";
   const rest = m && m[2] ? m[2] : "";
-  return { name, id: name === "chat" && UUID_RE.test(rest) ? rest : "", junk: name === "chat" && !!rest && !UUID_RE.test(rest) };
+  return {
+    name,
+    id: name === "chat" && UUID_RE.test(rest) ? rest : "",
+    junk: name === "chat" && !!rest && !UUID_RE.test(rest),
+    sub: name === "cabinet" && CAB_KEYS.has(rest) ? rest : "",
+    junkSub: name === "cabinet" && !!rest && !CAB_KEYS.has(rest),
+  };
 }
 
 function paintShell(name, id) {
@@ -418,16 +441,19 @@ function renderRoute() {
     history.replaceState(null, "", "#/" + name);
   } else if (p.junk) {
     history.replaceState(null, "", "#/chat");
+  } else if (p.junkSub) {
+    history.replaceState(null, "", "#/cabinet");
   }
-  // Ro'yxatdan suhbatga (yoki suhbatdan suhbatga) o'tganda bo'lim qayta qurilmaydi: faqat ochiq suhbat almashadi
-  if (name === "chat" && S.route === "chat" && S.view && typeof S.view.route === "function") {
-    S.view.route(id);
+  // Ro'yxatdan suhbatga (yoki suhbatdan suhbatga) o'tganda bo'lim qayta qurilmaydi: faqat ochiq suhbat almashadi.
+  // Kabinetda ham shunday: bo'limlar (#/cabinet/<bo'lim>) o'sha sahifaning o'zida almashadi.
+  if ((name === "chat" || name === "cabinet") && S.route === name && S.view && typeof S.view.route === "function") {
+    S.view.route(name === "chat" ? id : p.sub);
     paintShell(name, id);
     return;
   }
   teardownView();
   S.route = name;
-  const view = ROUTES[name].make(makeCtx(++S.token), { id, watch: S.watch, setTitle });
+  const view = ROUTES[name].make(makeCtx(++S.token), { id, sub: name === "cabinet" ? p.sub : "", watch: S.watch, setTitle });
   S.view = view;
   S.shell.main.replaceChildren(view.el);
   setTitle(view.title);

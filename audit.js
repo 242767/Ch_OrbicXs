@@ -66,6 +66,10 @@ function detailText(e) {
         parts.push(what + (Number.isInteger(d.count) ? " (yopilgan: " + d.count + ")" : ""), d.self ? "o'z hisobida" : "administrator tomonidan");
         break;
       }
+      case "push.enable":
+      case "push.disable":
+        if (d.label) parts.push("Qurilma: " + d.label);
+        break;
       default:
         break;
     }

@@ -10,7 +10,7 @@
 // FUNCTION_NAME  Supabase'ga joylangan funksiya nomi (qo'llanmada: ox-api).
 
 export default {
-  SUPABASE_URL: "https://chorbicxs.vercel.app/",
+  SUPABASE_URL: "https://LOYIHA-ID.supabase.co",
   SUPABASE_KEY: "sb_publishable_SHU_YERGA_QO'YING",
   LOGIN_DOMAIN: "orbicxs.internal",
   FUNCTION_NAME: "ox-api",
